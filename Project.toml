@@ -12,6 +12,8 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
 Revise = "3"
+FastGaussQuadrature = "0.4"
+Plots = "1"
 julia = "1.6"
 
 [extras]

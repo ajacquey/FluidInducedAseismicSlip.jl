@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate("/home/ajacquey/projects/FluidInducedAseismicSlip/")
+Pkg.activate("/home/ajacquey/projects/FluidInducedAseismicSlip.jl/")
 using Revise
 using FluidInducedAseismicSlip
 
