@@ -1,7 +1,6 @@
 module FluidInducedAseismicSlip
 
 using FastGaussQuadrature
-using QuadGK
 using SpecialFunctions
 using LinearAlgebra
 using Plots
