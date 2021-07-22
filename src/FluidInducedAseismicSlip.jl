@@ -6,49 +6,47 @@ using LinearAlgebra
 using Plots
 using Revise
 
-export injection_analytical
+export injection_analytical_gs
+export lambda_analytical_gs
 
 """
-    injection_analytical(T::Float64, N::Int64 = 100)
+    injection_analytical_gs(T::Float64, N::Int64 = 100)
 
-Solves the slip distribution due to an analytical pressure expression
+Solves the slip distribution using Gauss-Chebyshev quadratures due to an
+analytical pressure expression
 """
-function injection_analytical(T::Float64, N::Int64 = 100)
-    # # Create Gauss-Chebyshev quadrature points
-    # # s = gauss_chebyshev_first_kind(N)
-    # s, w = gausschebyshev(N)
-    # # Create Gauss-Chebyshev quadrature points
-    # x, z = gausschebyshev(N-1, 2)
-    # # x = collect(range(-1.0, 1.0, length = N))
-
+function injection_analytical_gs(T::Float64, N::Int64 = 100)
     # Solve for λ
-    λ, k = lambda_analytical(T, N)
+    λ, k = lambda_analytical_gs(T, N)
 
     # Slip
-    x, δ = slip_distribution(λ, N)
+    x, δ = slip_distribution_gs(λ, N)
 
-    # Plot slip gradient
-    plot(x, δ)
-    x_a = collect(0:0.05:1.0)
-    δ_a = [0.23366202, 0.23081724, 0.22426165, 0.21513089, 0.20404685, 0.19145812, 0.17772295, 0.16314401, 0.14798653, 0.13248893, 0.11686999, 0.101334019, 0.086075209, 0.071281873, 0.057141201, 0.043845559, 0.031602114, 0.020649782, 0.0112944788, 0.0040083095, 0.0]
-    plot!(x_a, δ_a)
+    # # Plot slip gradient
+    # plot(x, δ)
+    # x_a = collect(0:0.05:1.0)
+    # δ_a = [0.23366202, 0.23081724, 0.22426165, 0.21513089, 0.20404685, 0.19145812, 0.17772295, 0.16314401, 0.14798653, 0.13248893, 0.11686999, 0.101334019, 0.086075209, 0.071281873, 0.057141201, 0.043845559, 0.031602114, 0.020649782, 0.0112944788, 0.0040083095, 0.0]
+    # plot!(x_a, δ_a)
+    return x, δ, λ
 end
 
 """
-    lambda_analytical(
+    lambda_analytical_gs(
         T::Float64,
         N::Int64,
         max_iters::Int64 = 200,
         abs_tol::Float64 = 1.0e-10,
+        debug::Bool = False,
     )
 
-Use Newton-Raphson iterations to solve for λ
+Use Newton-Raphson iterations to solve for λ using Gauss-Chebyshev quadratures
 """
-function lambda_analytical(
+function lambda_analytical_gs(
     T::Float64,
     N::Int64,
     max_iters::Int64 = 200,
     abs_tol::Float64 = 1.0e-10,
+    debug::Bool = false,
 )
     # Initialization
     λ = 1.0
@@ -63,7 +61,9 @@ function lambda_analytical(
 
         # Check convergence
         if (abs(Res) <= abs_tol)
-            print("Solve converged! λ = ", λ, " after ", k, " iterations.\n")
+            if (debug)
+                print("Solve converged! λ = ", λ, " after ", k, " iterations.\n")
+            end
             return λ, k
         end
 
@@ -96,22 +96,21 @@ function jacobian_analytical(T, s, w, λ)
     return dot(w, f.(s)) / pi
 end
 
+"""
+    dF(s, u, λ)
+
+The function dF from Viesca and Garagash (2018)
+"""
 function dF(s, u, λ)
     return 1  / π * erfc(λ * abs(s)) / (u - s)
 end
 
+"""
+    F(u, λ, N)
+
+The function F from Viesca and Garagash (2018)
+"""
 function F(u, λ, N)
-    # Gauss-Chebyshev quadrature points
-    s, w = gausschebyshev(N, 1)
-    return dot(w, dF.(s, u, λ))
-end
-
-"""
-    slip_gradient(u, N, λ)
-
-Slip gradient evaluated with Gauss-Chebyshev quadrature
-"""
-function slip_gradient(u, N, λ)
     # Gauss-Chebyshev quadrature points
     s, w = gausschebyshev(N, 1)
     return dot(w, dF.(s, u, λ))
@@ -130,11 +129,11 @@ function slip_weigth(x, s, N)
 end
 
 """
-    slip(u, N, λ)
+    slip_gs(u, N, λ)
 
 Slip evaluated with Gauss-Chebyshev quadrature
 """
-function slip(x, N, λ)
+function slip_gs(x, N, λ)
     # Gauss-Chebyshev quadrature points
     s, w = gausschebyshev(N-1, 2)
     S = slip_weigth(x, s, N)
@@ -145,7 +144,7 @@ end
 """
     theta(x)
 
-Theta function
+Theta function from Viesca and Garagash (2018)
 """
 function theta(x)
     return acos(x)
@@ -168,16 +167,16 @@ function slip_gradient_distribution(λ, N)
 end
 
 """
-    slip_distribution(λ, N)
+    slip_distribution_gs(λ, N)
 
-Computes the slip distribution based on Gauss-Chebyshev quadrature
+Computes the slip distribution based on Gauss-Chebyshev quadratures
 """
-function slip_distribution(λ, N)
+function slip_distribution_gs(λ, N)
     δ = zeros(N)
     x = range(-1, 1, length = N)
 
     for i in 1:N
-        δ[i] = slip(x[i], N, λ)
+        δ[i] = slip_gs(x[i], N, λ)
     end
     return x, δ
 end
