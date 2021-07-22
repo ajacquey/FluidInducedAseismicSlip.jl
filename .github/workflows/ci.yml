@@ -6,7 +6,7 @@ on:
       - "README.md"
       - "LICENSE"
   pull_request:
-    path-ignore:
+    paths-ignore:
       - "README.md"
       - "LICENSE"
 
@@ -15,9 +15,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [stable, lts]
-        julia-arch: [x64, x86]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        version:
+          - "1.0"
+          - "1" # automatically expands to the latest stable 1.x release of Julia
+          - nightly
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x64
+          - x86
         exclude:
           - os: macOS-latest
             julia-arch: x86
