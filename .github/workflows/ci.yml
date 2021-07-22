@@ -17,9 +17,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - "1.0"
-          - "1.6" # automatically expands to the latest stable 1.x release of Julia
-          - nightly
+          - "1.6"
         os:
           - ubuntu-latest
           - macOS-latest
