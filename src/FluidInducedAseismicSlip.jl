@@ -1,5 +1,6 @@
 module FluidInducedAseismicSlip
 
+using Plots: length, size
 using FastGaussQuadrature
 using SpecialFunctions
 using LinearAlgebra
@@ -8,6 +9,9 @@ using Revise
 
 export injection_analytical_gs
 export lambda_analytical_gs
+export discretizeFaultSegment, collocationBEMMatrix
+
+include("bem.jl")
 
 """
     injection_analytical_gs(T::Float64, N::Int64 = 100)
