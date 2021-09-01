@@ -1,37 +1,33 @@
 module FluidInducedAseismicSlip
 
-using Plots: length, size
 using FastGaussQuadrature
 using SpecialFunctions
 using LinearAlgebra
-using Plots
-using Revise
 
 export injection_analytical_gs
 export lambda_analytical_gs
-export discretizeFaultSegment, collocationBEMMatrix
-
-include("bem.jl")
 
 """
     injection_analytical_gs(T::Float64, N::Int64 = 100)
 
 Solves the slip distribution using Gauss-Chebyshev quadratures due to an
-analytical pressure expression
+analytical pressure expression.
+Inputs:
+    T: the stress parameter
+    N: number of quadrature points
+Outputs:
+    x: the Gauss-Checbyshev quadrature points
+    δ: the slip distribution
+    λ: the slip to fluid migration factor
 """
 function injection_analytical_gs(T::Float64, N::Int64 = 100)
     # Solve for λ
-    λ, k = lambda_analytical_gs(T, N)
+    (λ, k) = lambda_analytical_gs(T, N)
 
     # Slip
-    x, δ = slip_distribution_gs(λ, N)
+    (x, δ) = slip_distribution_gs(λ, N)
 
-    # # Plot slip gradient
-    # plot(x, δ)
-    # x_a = collect(0:0.05:1.0)
-    # δ_a = [0.23366202, 0.23081724, 0.22426165, 0.21513089, 0.20404685, 0.19145812, 0.17772295, 0.16314401, 0.14798653, 0.13248893, 0.11686999, 0.101334019, 0.086075209, 0.071281873, 0.057141201, 0.043845559, 0.031602114, 0.020649782, 0.0112944788, 0.0040083095, 0.0]
-    # plot!(x_a, δ_a)
-    return x, δ, λ
+    return (x, δ, λ)
 end
 
 """
@@ -43,7 +39,16 @@ end
         debug::Bool = False,
     )
 
-Use Newton-Raphson iterations to solve for λ using Gauss-Chebyshev quadratures
+Use Newton-Raphson iterations to solve for λ using Gauss-Chebyshev quadratures.
+Inputs:
+    T: the stress parameter
+    N: number of quadrature points
+    max_iters: the maximum number of Newton-Raphson iterations
+    abs_tol: the absolute tolerance for the Newton solve
+    debug: print convergence information
+Outputs:
+    λ: the slip to fluid migration factor
+    k: the number of iterations used
 """
 function lambda_analytical_gs(
     T::Float64,
@@ -66,9 +71,9 @@ function lambda_analytical_gs(
         # Check convergence
         if (abs(Res) <= abs_tol)
             if (debug)
-                print("Solve converged! λ = ", λ, " after ", k, " iterations.\n")
+                println("Solve converged! λ = ", λ, " after ", k, " iterations.")
             end
-            return λ, k
+            return (λ, k)
         end
 
         # Update λ
@@ -77,55 +82,55 @@ function lambda_analytical_gs(
         k += 1
     end
 
-    print("Maximm number of iterations reached in the Newton solve!!!\n")
+    throw(ErrorException("Maximm number of iterations reached in the Newton solve!!!\n"))
 end
 
 """
-    residual_analytical(T, s, w, λ)
+    residual_analytical(T::Float64, s::Vector{Float64}, w::Vector{Float64}, λ::Float64)
 
 The residual for calculating λ
 """
-function residual_analytical(T, s, w, λ)
+function residual_analytical(T::Float64, s::Vector{Float64}, w::Vector{Float64}, λ::Float64)
     f(s) = erfc(λ * abs(s))
     return dot(w, f.(s)) / pi - T
 end
 
 """
-    jacobian_analytical(T, s, w, λ)
+    jacobian_analytical(T::Float64, s::Vector{Float64}, w::Vector{Float64}, λ::Float64)
 
 The jacobian for calculating λ
 """
-function jacobian_analytical(T, s, w, λ)
+function jacobian_analytical(T::Float64, s::Vector{Float64}, w::Vector{Float64}, λ::Float64)
     f(s) = -2 * abs(s) / sqrt(pi) * exp(-λ^2 * abs(s)^2)
     return dot(w, f.(s)) / pi
 end
 
 """
-    dF(s, u, λ)
+    dF(s::Float64, u::Float64, λ::Float64)
 
 The function dF from Viesca and Garagash (2018)
 """
-function dF(s, u, λ)
+function dF(s::Float64, u::Float64, λ::Float64)
     return 1  / π * erfc(λ * abs(s)) / (u - s)
 end
 
 """
-    F(u, λ, N)
+    F(u::Float64, λ::Float64, N::Int64)
 
 The function F from Viesca and Garagash (2018)
 """
-function F(u, λ, N)
+function F(u::Float64, λ::Float64, N::Int64)
     # Gauss-Chebyshev quadrature points
     s, w = gausschebyshev(N, 1)
     return dot(w, dF.(s, u, λ))
 end
 
 """
-    slip_weigth(x, s, N)
+    slip_weigth(x::Float64, s::Vector{Float64}, N::Int64)
 
 The slip weigth S_ij from Viesca and Garagash (2018)
 """
-function slip_weigth(x, s, N)
+function slip_weigth(x::Float64, s::Vector{Float64}, N::Int64)
     θ = theta(x)
     Φ = [0.5 * (sin(k * θ) / k - sin((k + 2) * θ) / (k + 2)) for k = N:-1:1]
     B = [2 * sin(theta(sj)) * sin((k+1)*theta(sj)) / (N+1) for sj in s, k = N:-1:1]
@@ -133,56 +138,44 @@ function slip_weigth(x, s, N)
 end
 
 """
-    slip_gs(u, N, λ)
+    slip_gs(x::Float64, N::Int64, λ::Float64)
 
 Slip evaluated with Gauss-Chebyshev quadrature
 """
-function slip_gs(x, N, λ)
+function slip_gs(x::Float64, N::Int64, λ::Float64)
     # Gauss-Chebyshev quadrature points
-    s, w = gausschebyshev(N-1, 2)
+    (s, w) = gausschebyshev(N-1, 2)
     S = slip_weigth(x, s, N)
 
     return dot(S, F.(s, λ, N))
 end
 
 """
-    theta(x)
+    theta(x::Float64)
 
 Theta function from Viesca and Garagash (2018)
 """
-function theta(x)
-    return acos(x)
+function theta(x::Float64)
+    return acos(x::Float64)
 end
 
 """
-    slip_gradient_distribution(λ, N)
-
-Computes the slip gradient distribution based on Gauss-Chebyshev quadrature
-"""
-function slip_gradient_distribution(λ, N)
-    dδ = zeros(N-1)
-    # Gauss-Chebyshev quadrature points
-    x, w = gausschebyshev(N-1, 2)
-
-    for i in 1:N-1
-        dδ[i] = slip_gradient(x[i], N, λ)
-    end
-    return x, dδ
-end
-
-"""
-    slip_distribution_gs(λ, N)
+    slip_distribution_gs(λ::Float64, N::Int64)
 
 Computes the slip distribution based on Gauss-Chebyshev quadratures
+Inputs:
+    λ: the slip to fluid migration factor
+    N: number of quadrature points
+Outputs
+    x: the Gauss-Checbyshev quadrature points
+    δ: the slip distribution
+    
 """
-function slip_distribution_gs(λ, N)
-    δ = zeros(N)
-    x = range(-1, 1, length = N)
+function slip_distribution_gs(λ::Float64, N::Int64)
+    x = range(-1.0, 1.0, length = N)
 
-    for i in 1:N
-        δ[i] = slip_gs(x[i], N, λ)
-    end
-    return x, δ
+    δ = slip_gs.(x, N, λ)
+    return (x, δ)
 end
 
 end
