@@ -20,9 +20,9 @@ Outputs:
     δ: the slip distribution
     λ: the slip to fluid migration factor
 """
-function injection_analytical_gs(T::Float64, N::Int64 = 100)
+function injection_analytical_gs(T::Float64, N::Int64=100)
     # Solve for λ
-    (λ, k) = lambda_analytical_gs(T, N)
+    λ = lambda_analytical_gs(T, N)
 
     # Slip
     (x, δ) = slip_distribution_gs(λ, N)
@@ -48,14 +48,13 @@ Inputs:
     debug: print convergence information
 Outputs:
     λ: the slip to fluid migration factor
-    k: the number of iterations used
 """
 function lambda_analytical_gs(
     T::Float64,
     N::Int64,
-    max_iters::Int64 = 200,
-    abs_tol::Float64 = 1.0e-10,
-    debug::Bool = false,
+    max_iters::Int64=200,
+    abs_tol::Float64=1.0e-10,
+    debug::Bool=false,
 )
     # Initialization
     λ = 1.0
@@ -73,7 +72,7 @@ function lambda_analytical_gs(
             if (debug)
                 println("Solve converged! λ = ", λ, " after ", k, " iterations.")
             end
-            return (λ, k)
+            return λ
         end
 
         # Update λ
@@ -133,7 +132,7 @@ The slip weigth S_ij from Viesca and Garagash (2018)
 function slip_weigth(x::Float64, s::Vector{Float64}, N::Int64)
     θ = theta(x)
     Φ = [0.5 * (sin(k * θ) / k - sin((k + 2) * θ) / (k + 2)) for k = N:-1:1]
-    B = [2 * sin(theta(sj)) * sin((k+1)*theta(sj)) / (N+1) for sj in s, k = N:-1:1]
+    B = [2 * sin(theta(sj)) * sin((k + 1) * theta(sj)) / (N + 1) for sj in s, k = N:-1:1]
     return B * Φ
 end
 
@@ -144,7 +143,7 @@ Slip evaluated with Gauss-Chebyshev quadrature
 """
 function slip_gs(x::Float64, N::Int64, λ::Float64)
     # Gauss-Chebyshev quadrature points
-    (s, w) = gausschebyshev(N-1, 2)
+    (s, w) = gausschebyshev(N - 1, 2)
     S = slip_weigth(x, s, N)
 
     return dot(S, F.(s, λ, N))
@@ -172,7 +171,7 @@ Outputs
     
 """
 function slip_distribution_gs(λ::Float64, N::Int64)
-    x = range(-1.0, 1.0, length = N)
+    x = range(-1.0, 1.0, length=N)
 
     δ = slip_gs.(x, N, λ)
     return (x, δ)
