@@ -1,7 +1,7 @@
 name = "FluidInducedAseismicSlip"
 uuid = "681bf5af-8c4c-4c72-97a1-a72de5d27596"
 authors = ["Antoine Jacquey <antoine.jacquey@tufts.edu> and contributors"]
-version = "0.1.0"
+version = "0.5.0"
 
 [deps]
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"

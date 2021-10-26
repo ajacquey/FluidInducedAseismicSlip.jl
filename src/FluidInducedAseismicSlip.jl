@@ -126,19 +126,19 @@ function F(u::Float64, λ::Float64, N::Int64)
 end
 
 """
-    slip_gs(x::Float64, N::Int64, λ::Float64)
+    slip_gs!(δ::Vector{Float64}, x::Vector{Float64}, N::Int64, λ::Float64)
 
 Slip evaluated with Gauss-Chebyshev quadrature
 """
 function slip_gs!(δ::Vector{Float64}, x::Vector{Float64}, N::Int64, λ::Float64)
     # Gauss-Chebyshev quadrature points
-    (s, w) = gausschebyshev(N, 2)
+    (s, w) = gausschebyshev(N-1, 2)
 
     # Slip weigth from Viesca and Garagash (2018)
-    B = [2 * sin(theta(sj)) * sin((k + 1) * theta(sj)) / (N + 1) for sj in s, k = N:-1:1]
-    Φ = [0.5 * (sin(k * theta(xi)) / k - sin((k + 2) * theta(xi)) / (k + 2)) for xi in x, k = N:-1:1]
-    S = zeros(N, N)
-    mul!(S, B, Φ)
+    Φ = [0.5 * (sin(k * acos(xi)) / k - sin((k + 2) * acos(xi)) / (k + 2)) for xi in x, k = N:-1:1]
+    B = [2 * sin(acos(sj)) * sin((k + 1) * acos(sj)) / (N + 1) for k = N:-1:1, sj in s]
+    S = zeros(N, N-1)
+    mul!(S, Φ, B)
     mul!(δ, S, F.(s, λ, N))
 end
 
@@ -165,6 +165,7 @@ Outputs
 """
 function slip_distribution_gs(λ::Float64, N::Int64)
     x = collect(range(-1.0, 1.0, length=N))
+    
     δ = similar(x)
     slip_gs!(δ, x, N, λ)
     return (x, δ)
