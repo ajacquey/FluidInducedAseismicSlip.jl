@@ -6,6 +6,7 @@ using LinearAlgebra
 
 export injection_analytical_gs
 export lambda_analytical_gs
+export slip_distribution_gs
 
 """
     injection_analytical_gs(T::Float64, N::Int64 = 100)
@@ -125,28 +126,20 @@ function F(u::Float64, λ::Float64, N::Int64)
 end
 
 """
-    slip_weigth(x::Float64, s::Vector{Float64}, N::Int64)
-
-The slip weigth S_ij from Viesca and Garagash (2018)
-"""
-function slip_weigth(x::Float64, s::Vector{Float64}, N::Int64)
-    θ = theta(x)
-    Φ = [0.5 * (sin(k * θ) / k - sin((k + 2) * θ) / (k + 2)) for k = N:-1:1]
-    B = [2 * sin(theta(sj)) * sin((k + 1) * theta(sj)) / (N + 1) for sj in s, k = N:-1:1]
-    return B * Φ
-end
-
-"""
     slip_gs(x::Float64, N::Int64, λ::Float64)
 
 Slip evaluated with Gauss-Chebyshev quadrature
 """
-function slip_gs(x::Float64, N::Int64, λ::Float64)
+function slip_gs!(δ::Vector{Float64}, x::Vector{Float64}, N::Int64, λ::Float64)
     # Gauss-Chebyshev quadrature points
-    (s, w) = gausschebyshev(N - 1, 2)
-    S = slip_weigth(x, s, N)
+    (s, w) = gausschebyshev(N, 2)
 
-    return dot(S, F.(s, λ, N))
+    # Slip weigth from Viesca and Garagash (2018)
+    B = [2 * sin(theta(sj)) * sin((k + 1) * theta(sj)) / (N + 1) for sj in s, k = N:-1:1]
+    Φ = [0.5 * (sin(k * theta(xi)) / k - sin((k + 2) * theta(xi)) / (k + 2)) for xi in x, k = N:-1:1]
+    S = zeros(N, N)
+    mul!(S, B, Φ)
+    mul!(δ, S, F.(s, λ, N))
 end
 
 """
@@ -166,14 +159,14 @@ Inputs:
     λ: the slip to fluid migration factor
     N: number of quadrature points
 Outputs
-    x: the Gauss-Checbyshev quadrature points
+    x: the spatial discretization
     δ: the slip distribution
     
 """
 function slip_distribution_gs(λ::Float64, N::Int64)
-    x = range(-1.0, 1.0, length=N)
-
-    δ = slip_gs.(x, N, λ)
+    x = collect(range(-1.0, 1.0, length=N))
+    δ = similar(x)
+    slip_gs!(δ, x, N, λ)
     return (x, δ)
 end
 
